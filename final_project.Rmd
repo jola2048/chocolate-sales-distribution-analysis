@@ -1,0 +1,114 @@
+---
+title: "final project"
+author: "team 2"
+date: "2025-05-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(e1071)
+library(ggplot2)
+library(nortest)
+library(rattle)
+library(ggpubr)
+library(goftest)
+library(fitdistrplus)
+```
+
+The data contains information about chocolate sales such as: sales person, country, the product sold, date, sold amount in USD and the number of shipped boxes.
+
+```{r}
+chocolate_data = read.csv(file="DataSets\\chocolate_sales.csv")
+summary(chocolate_data)
+```
+
+We will analyze the number of shipped boxes per sale.
+
+<p style="font-size: 20px;">TESTING PROBLEM: finding the appropriate distribution for our data</p>
+
+```{r}
+boxes = na.omit(chocolate_data$Boxes.Shipped)
+```
+
+Firstly, we want to check if the data follows a normal distribution.
+
+<p style="font-size: 20px;">Descriptive statistics:</p>
+```{r}
+summary(boxes)
+skewness(boxes)
+kurtosis(boxes)
+```
+
+Skewness and kurtosis are positive so the data is right-skewed and leptokurtic. It has heavier tails and a sharper peak compared to the normal distribution.
+
+```{r}
+hist(boxes, main='Histogram of number of shipped boxes', col='lightblue', probability = TRUE)
+lines(density(boxes), col='red', lwd=2)
+```
+
+```{r}
+boxplot(boxes, main='Box plot of number of shipped boxes', col='lightblue')
+median(boxes)
+```
+
+The majority of sales are about 100 to 200 boxes, the median is 135.
+
+```{r}
+qqnorm(boxes, main='QQ plot of number of shipped boxes')
+qqline(boxes, col="blue") 
+```
+
+The QQ plot is U-shaped and the tails are above the reference line. This indicated that the normal distribution is not capturing tail behavior correctly (our data has heavier tails).
+
+<p style="font-size: 20px;">Tests for normality</p>
+
+```{r}
+# Shapiro-Wilk test
+shapiro.test(boxes)
+```
+The p-value is very small so we can reject the null hypothesis. The data doesn't follow a normal distribution.
+```{r}
+# Anderson-Darling test
+ad.test(boxes)
+```
+Again the p-value is very small so we can reject the null hypothesis. The data doesn't follow a normal distribution.
+These results are consistent with each other and the plots.
+
+<p style="font-size: 20px;">Now we want to find the appropriate distribution for our data.</p>
+
+```{r}
+descdist(boxes)
+```
+
+Based on the Cullen and Frey graph we want to test the fit of lognormal distribution and gamma distribution. 
+
+<p style="font-size: 20px;">Lognormal</p>
+```{r}
+fit_lnorm = fitdist(boxes, 'lnorm')
+plot(fit_lnorm)
+```
+<p style="font-size: 20px;">Gamma</p>
+```{r}
+fit_gamma = fitdist(boxes, 'gamma')
+plot(fit_gamma)
+```
+```{r}
+gofstat(list(fit_lnorm, fit_gamma))
+```
+
+All goodness-of-fit statistics are significantly lower for the gamma distribution, indicating a closer match.
+
+Kolmogorov-Smirnov: The gamma Cumulative Distribution Function is closer to our data's Empirical Distribution Function than the log-normal's.
+
+Cramer-von Mises: The gamma distribution more closely follows the shape of our data's distribution.
+
+Anderson-Darling: Gamma captures the tail behavior of our data far better than the log-normal distribution, which has heavy mismatches in the tails.
+
+The AIC and BIC values, which account for model complexity, are also lower for the gamma distribution, meaning it fits our data much better.
+
+We conclude that the data is well-modeled by the gamma distribution.
+
